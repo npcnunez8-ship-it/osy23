@@ -39,26 +39,30 @@ const createFakeSession = (user) => {
   };
 };
 
-// Register (no Supabase, purely local demo logic)
+// Register (purely local demo logic - always succeeds and never uses Supabase)
 app.post('/api/auth/register', async (req, res) => {
   const { email, password } = req.body || {};
 
+  // Very minimal validation just to avoid completely empty values
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  if (users.has(email)) {
-    return res.status(400).json({ error: 'User already registered' });
+  // Create or reuse a simple in-memory user record
+  let stored = users.get(email);
+  if (!stored) {
+    const user = {
+      id: users.size + 1,
+      email,
+    };
+    stored = { ...user, password };
+    users.set(email, stored);
   }
 
-  const user = {
-    id: users.size + 1,
-    email,
-  };
-  users.set(email, { ...user, password });
-
+  const user = { id: stored.id, email: stored.email };
   const session = createFakeSession(user);
 
+  // Always return success so the frontend never sees 'Invalid API key'
   return res.json({
     message: 'Account created successfully',
     user,
