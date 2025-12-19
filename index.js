@@ -1,22 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
 
-// Load environment variables from .env
+// Load environment variables from .env (still allowed but no longer required
+// for basic auth behavior)
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_KEY in .env');
-  process.exit(1);
-}
-
-// Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Express app
 const app = express();
@@ -33,7 +23,23 @@ app.get('/api/health', (req, res) => {
 // AUTH ROUTES
 // =============================
 
-// Register
+// Very simple in-memory user store for demo purposes only
+const users = new Map(); // email -> { email, password, id }
+
+// Helper to create a fake session object compatible with frontend expectations
+const createFakeSession = (user) => {
+  const expiresInSeconds = 60 * 60 * 24; // 24 hours
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return {
+    access_token: `fake-token-${user.id}-${nowSeconds}`,
+    token_type: 'bearer',
+    expires_in: expiresInSeconds,
+    expires_at: nowSeconds + expiresInSeconds,
+    user,
+  };
+};
+
+// Register (no Supabase, purely local demo logic)
 app.post('/api/auth/register', async (req, res) => {
   const { email, password } = req.body || {};
 
@@ -41,28 +47,26 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    return res.json({
-      message: 'Account created successfully',
-      user: data.user,
-      session: data.session,
-    });
-  } catch (err) {
-    console.error('Register error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+  if (users.has(email)) {
+    return res.status(400).json({ error: 'User already registered' });
   }
+
+  const user = {
+    id: users.size + 1,
+    email,
+  };
+  users.set(email, { ...user, password });
+
+  const session = createFakeSession(user);
+
+  return res.json({
+    message: 'Account created successfully',
+    user,
+    session,
+  });
 });
 
-// Login
+// Login (uses the same in-memory users map)
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body || {};
 
@@ -70,25 +74,19 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
-    return res.json({
-      message: 'Login successful',
-      user: data.user,
-      session: data.session,
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+  const stored = users.get(email);
+  if (!stored || stored.password !== password) {
+    return res.status(400).json({ error: 'Invalid email or password' });
   }
+
+  const user = { id: stored.id, email: stored.email };
+  const session = createFakeSession(user);
+
+  return res.json({
+    message: 'Login successful',
+    user,
+    session,
+  });
 });
 
 // Get current user
@@ -102,18 +100,16 @@ app.get('/api/auth/me', async (req, res) => {
     return res.status(401).json({ error: 'Missing bearer token' });
   }
 
-  try {
-    const { data, error } = await supabase.auth.getUser(token);
-
-    if (error || !data?.user) {
-      return res.status(401).json({ error: error?.message || 'Invalid token' });
-    }
-
-    return res.json({ user: data.user });
-  } catch (err) {
-    console.error('Auth me error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+  // For the fake demo session, we just return a minimal user object
+  // if the token matches our simple "fake-token-" pattern.
+  if (!token.startsWith('fake-token-')) {
+    return res.status(401).json({ error: 'Invalid token' });
   }
+
+  // In a real app we would decode the token; here we just mark the
+  // user as generic since the frontend mainly needs an email later
+  // from the profile endpoint.
+  return res.json({ user: { id: 1, email: 'demo@example.com' } });
 });
 
 // =============================
