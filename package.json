@@ -1,0 +1,23 @@
+{
+  "name": "osy23",
+  "version": "1.0.0",
+  "description": "A production-ready, responsive website for discovering and rating snacks from around the world. Built with pure HTML5, CSS3, and Vanilla JavaScript (ES6+).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "backend": "node backend/index.js",
+    "backend:dev": "nodemon backend/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
+  }
+}
