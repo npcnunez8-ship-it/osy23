@@ -10,6 +10,8 @@ import { openModal, closeModal, initModals, initStarRatings } from './js/modal.j
 import { initRatingForm, calculateAverageRatings, getOverallAverage, initRatingFormSubmit } from './js/rating.js';
 import { initLeaderboard, renderLeaderboard } from './js/leaderboard.js';
 import { handleImageError } from './js/imageFetcher.js';
+import { initAuth, initAuthForms } from './js/auth.js';
+import { initProfileForms } from './js/profile.js';
 
 // Global snack data (will be loaded from backend)
 let allSnacksData = [];
